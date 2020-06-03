@@ -1,7 +1,8 @@
 export WMMA
 module WMMA
 
-using ..CUDA: AS, DevicePtr
+using ..CUDA: AS
+using Core: LLVMPtr
 
 ################################################################################
 # CONSTANTS
@@ -48,15 +49,6 @@ get_frag_info(matrix, ptx_el_type) = (
         )
 
 get_addrspace_info(addr_space) = convert(Int, map_ptx_as_to_as_ty[addr_space])
-
-@generated function Base.cconvert(::Type{Core.LLVMPtr{T, as}}, x::DevicePtr{T, AS}) where {T, as, AS}
-    ir = "%ptr = inttoptr i64 %0 to i8 addrspace($as)*
-          ret i8 addrspace($as)* %ptr"
-
-    return quote
-        return Base.llvmcall($ir, Core.LLVMPtr{T, as}, Tuple{Int64}, Base.bitcast(Int64, x))
-    end
-end
 
 # Fix for https://github.com/JuliaGPU/CUDAnative.jl/issues/587.
 # Instead of ccall'ing the intrinsics with NTuple{N, T} (which gets lowered to
@@ -507,7 +499,7 @@ load_a, load_b, load_c
 for mat in ["a", "b", "c"]
     func_name = Symbol("load_$mat")
 
-    @eval @generated function $func_name(addr::DevicePtr{T, AS},
+    @eval @generated function $func_name(addr::LLVMPtr{T, AS},
                                          stride::Number,
                                          layout::Type{L},
                                          config::Type{Config{M, N, K, D_TYPE}}) where {T, AS, L, M, N, K, D_TYPE}
@@ -610,7 +602,7 @@ See also: [`WMMA.Fragment`](@ref), [`WMMA.FragmentLayout`](@ref), [`WMMA.Config`
 """
 store_d
 
-@generated function store_d(addr::DevicePtr{T, AS},
+@generated function store_d(addr::LLVMPtr{T, AS},
                             d::Fragment{M, N, K, D_SZ, T, Unspecified, Accumulator},
                             stride::Number,
                             layout::Type{L},

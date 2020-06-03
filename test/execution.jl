@@ -598,7 +598,7 @@ script = """
     @noinline foo(a, i) = a[1] = i
     bar(a) = (foo(a, 42); nothing)
 
-    ptr = CUDA.DevicePtr{Int,AS.Global}(0)
+    ptr = reinterpret(Core.LLVMPtr{Int,AS.Global}, C_NULL)
     arr = CuDeviceArray{Int,1,AS.Global}((0,), ptr)
 
     @cuda bar(arr)
@@ -626,7 +626,7 @@ end
         ccall("llvm.trap", llvmcall, Cvoid, ())
     end
 
-    function kernel(input::Int32, output::CUDA.DevicePtr{Int32}, yes::Bool=true)
+    function kernel(input::Int32, output::Core.LLVMPtr{Int32}, yes::Bool=true)
         i = threadIdx().x
 
         temp = @cuStaticSharedMem(Cint, 1)
@@ -666,7 +666,7 @@ end
         Base.llvmcall("unreachable", Cvoid, Tuple{})
     end
 
-    function kernel(input::Int32, output::CUDA.DevicePtr{Int32}, yes::Bool=true)
+    function kernel(input::Int32, output::Core.LLVMPtr{Int32}, yes::Bool=true)
         i = threadIdx().x
 
         temp = @cuStaticSharedMem(Cint, 1)
