@@ -22,11 +22,6 @@ end
     @test !occursin("@__nv_fmaf", ir)
 end
 
-@testset "ldg" begin
-    ir = sprint(io->CUDA.code_llvm(io, CUDA.pointerref_ldg, Tuple{Core.LLVMPtr{Int,AS.Global},Int,Val{1}}))
-    @test occursin("@llvm.nvvm.ldg", ir)
-end
-
 @testset "assume" begin
     foo(i) = cld(42, i)
     ir = sprint(io->CUDA.code_llvm(io, foo, Tuple{Int}))

@@ -24,7 +24,7 @@ const LDGTypes = Union{UInt8, UInt16, UInt32, UInt64,
                        Float32, Float64}
 
 # TODO: this functionality should throw <sm_32
-@generated function pointerref_ldg(p::LLVMPtr{T,0}, i::Int,
+@generated function pointerref_ldg(p::LLVMPtr{T,AS.Global}, i::Int,
                                    ::Val{align}) where {T<:LDGTypes,align}
     sizeof(T) == 0 && return T.instance
     eltyp = convert(LLVMType, T)
@@ -79,9 +79,9 @@ end
 
 export unsafe_cached_load
 
-unsafe_cached_load(p::LLVMPtr{<:LDGTypes,0}, i::Integer=1, align::Val=Val(1)) =
+unsafe_cached_load(p::LLVMPtr{<:LDGTypes,1}, i::Integer=1, align::Val=Val(1)) =
     pointerref_ldg(p, Int(i), align)
-# NOTE: fall back to normal pointerref for unsupported types. we could be smarter here,
+# NOTE: fall back to normal unsafe_load for unsupported types. we could be smarter here,
 #       e.g. destruct/load/reconstruct, but that's too complicated for what it's worth.
 unsafe_cached_load(p::LLVMPtr, i::Integer=1, align::Val=Val(1)) =
-    pointerref(p, Int(i), align)
+    unsafe_load(p, i, align)

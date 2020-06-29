@@ -138,20 +138,3 @@ end
     da = CUDA.CuDeviceArray(1, dp)
     load_index(da)
 end
-
-@testset "Const" begin
-    function kernel(a, b, i)
-        b[i] = Base.Experimental.Const(a)[i]
-        return
-    end
-
-    buf = IOBuffer()
-
-    a = CuArray([0])
-    b = CuArray([0])
-    @device_code_ptx io=buf @cuda kernel(a, b, 1)
-    @test Array(a) == Array(b)
-
-    asm = String(take!(copy(buf)))
-    @test occursin("ld.global.nc", asm)
-end
