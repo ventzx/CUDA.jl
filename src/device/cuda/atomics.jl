@@ -96,7 +96,7 @@ end
         entry = BasicBlock(llvm_f, "entry", JuliaContext())
         position!(builder, entry)
 
-        typed_ptr = inttoptr!(builder, parameters(llvm_f)[1], T_typed_ptr)
+        typed_ptr = bitcast!(builder, parameters(llvm_f)[1], T_typed_ptr)
 
         res = atomic_cmpxchg!(builder, typed_ptr, parameters(llvm_f)[2],
                               parameters(llvm_f)[3], atomic_acquire_release, atomic_acquire,
@@ -134,30 +134,26 @@ for A in (AS.Generic, AS.Global, AS.Shared)
     for T in (Float32, Float64)
         nb = sizeof(T)*8
 
-        if A == AS.Generic
-            # FIXME: Ref doesn't encode the AS --> wrong mangling for nonzero address spaces
-            intr = "llvm.nvvm.atomic.load.add.f$nb.p$(convert(Int, A))i8"
-            @eval @inline atomic_add!(ptr::LLVMPtr{$T,$A}, val::$T) =
-                ccall($intr, llvmcall, $T, (Ref{$T}, $T), ptr, val)
+        import Base.Sys: WORD_SIZE
+        if T == Float32
+            T_val = "float"
         else
-            import Base.Sys: WORD_SIZE
-            if T == Float32
-                T_val = "float"
-            else
-                T_val = "double"
-            end
-            if A == AS.Generic
-                T_ptr = "$(T_val)*"
-            else
-                T_ptr = "$(T_val) addrspace($(convert(Int, A)))*"
-            end
-            intr = "llvm.nvvm.atomic.load.add.f$nb.p$(convert(Int, A))f$nb"
-            @eval @inline atomic_add!(ptr::LLVMPtr{$T,$A}, val::$T) = Base.llvmcall(
-                $("declare $T_val @$intr($T_ptr, $T_val)",
-                  "%rv = call $T_val @$intr($T_ptr %0, $T_val %1)
-                   ret $T_val %rv"), $T,
-                Tuple{LLVMPtr{$T,$A}, $T}, ptr, val)
+            T_val = "double"
         end
+        if A == AS.Generic
+            T_untyped_ptr = "i8*"
+            T_typed_ptr = "$(T_val)*"
+        else
+            T_untyped_ptr = "i8 addrspace($(convert(Int, A)))*"
+            T_typed_ptr = "$(T_val) addrspace($(convert(Int, A)))*"
+        end
+        intr = "llvm.nvvm.atomic.load.add.f$nb.p$(convert(Int, A))f$nb"
+        @eval @inline atomic_add!(ptr::LLVMPtr{$T,$A}, val::$T) = Base.llvmcall(
+            $("declare $T_val @$intr($T_typed_ptr, $T_val)",
+               "%ptr = bitcast $T_untyped_ptr %0 to $T_typed_ptr
+                %rv = call $T_val @$intr($T_typed_ptr %ptr, $T_val %1)
+                ret $T_val %rv"), $T,
+            Tuple{LLVMPtr{$T,$A}, $T}, ptr, val)
     end
 
     # declare i32 @llvm.nvvm.atomic.load.inc.32.p0i32(i32* address, i32 val)
@@ -171,26 +167,22 @@ for A in (AS.Generic, AS.Global, AS.Shared)
         nb = sizeof(T)*8
         fn = Symbol("atomic_$(op)!")
 
+        import Base.Sys: WORD_SIZE
+        T_val = "i32"
         if A == AS.Generic
-            # FIXME: Ref doesn't encode the AS --> wrong mangling for nonzero address spaces
-            intr = "llvm.nvvm.atomic.load.$op.$nb.p$(convert(Int, A))i8"
-            @eval @inline $fn(ptr::LLVMPtr{$T,$A}, val::$T) =
-                ccall($intr, llvmcall, $T, (Ref{$T}, $T), ptr, val)
+            T_untyped_ptr = "i8*"
+            T_typed_ptr = "$(T_val)*"
         else
-            import Base.Sys: WORD_SIZE
-            T_val = "i32"
-            if A == AS.Generic
-                T_ptr = "$(T_val)*"
-            else
-                T_ptr = "$(T_val) addrspace($(convert(Int, A)))*"
-            end
-            intr = "llvm.nvvm.atomic.load.$op.$nb.p$(convert(Int, A))i$nb"
-            @eval @inline $fn(ptr::LLVMPtr{$T,$A}, val::$T) = Base.llvmcall(
-                $("declare $T_val @$intr($T_ptr, $T_val)",
-                  "%rv = call $T_val @$intr($T_ptr %0, $T_val %1)
-                   ret $T_val %rv"), $T,
-                Tuple{LLVMPtr{$T,$A}, $T}, ptr, val)
+            T_untyped_ptr = "i8 addrspace($(convert(Int, A)))*"
+            T_typed_ptr = "$(T_val) addrspace($(convert(Int, A)))*"
         end
+        intr = "llvm.nvvm.atomic.load.$op.$nb.p$(convert(Int, A))i$nb"
+        @eval @inline $fn(ptr::LLVMPtr{$T,$A}, val::$T) = Base.llvmcall(
+            $("declare $T_val @$intr($T_typed_ptr, $T_val)",
+               "%ptr = bitcast $T_untyped_ptr %0 to $T_typed_ptr
+                %rv = call $T_val @$intr($T_typed_ptr %ptr, $T_val %1)
+                ret $T_val %rv"), $T,
+            Tuple{LLVMPtr{$T,$A}, $T}, ptr, val)
     end
 end
 
@@ -205,11 +197,11 @@ inttype(::Type{Float32}) = Int32
 inttype(::Type{Float64}) = Int64
 
 for T in [Float32, Float64]
-    @eval @inline function atomic_cas!(ptr::LLVMPtr{$T}, cmp::$T, new::$T)
+    @eval @inline function atomic_cas!(ptr::LLVMPtr{$T,A}, cmp::$T, new::$T) where {A}
         IT = inttype($T)
         cmp_i = reinterpret(IT, cmp)
         new_i = reinterpret(IT, new)
-        old_i = atomic_cas!(convert(LLVMPtr{IT}, ptr), cmp_i, new_i)
+        old_i = atomic_cas!(reinterpret(LLVMPtr{IT,A}, ptr), cmp_i, new_i)
         return reinterpret($T, old_i)
     end
 end
