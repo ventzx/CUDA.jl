@@ -120,7 +120,7 @@ for mat in ["a", "b", "c"],
 
     ccall_name = "extern $llvm_intr"
 
-    ptr_ty = Core.LLVMPtr{arr_ty, addr_space_int}
+    ptr_ty = LLVMPtr{arr_ty, addr_space_int}
     struct_ty = Symbol("LLVMStruct$sz")
 
     @eval $func_name(src_addr, stride) = convert(NTuple{$sz, $frag_ty}, ccall($ccall_name, llvmcall, $struct_ty{$frag_ty}, ($ptr_ty, Int32), src_addr, stride))
@@ -175,7 +175,7 @@ for mat in ["d"],
     frag_types = ntuple(i -> frag_ty, sz)
     frag_vars = ntuple(i -> :(data[$i]), sz)
 
-    ptr_ty = Core.LLVMPtr{arr_ty, addr_space_int}
+    ptr_ty = LLVMPtr{arr_ty, addr_space_int}
 
     @eval $func_name(dst_addr, data, stride) = ccall($ccall_name, llvmcall, Nothing, ($ptr_ty, $(frag_types...), Int32), dst_addr, $(frag_vars...), stride)
     @eval export $func_name
