@@ -49,9 +49,9 @@ version = "4.0.0"
 
 [[GPUCompiler]]
 deps = ["DataStructures", "InteractiveUtils", "LLVM", "Libdl", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "dfcab904fb0486390cc4cbbb59f6fe1e8e6bc4a6"
+git-tree-sha1 = "374baab8247bf5b3301eb23c5996b33af2b07289"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.5.0"
+version = "0.5.1"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
