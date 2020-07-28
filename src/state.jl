@@ -181,8 +181,8 @@ Although this call is fairly cheap (50-100ns), it is only intended for interacti
 for initial set-up of the environment. If you need to switch devices on a regular basis,
 work with contexts instead and call [`context!`](@ref) directly (5-10ns).
 
-If your library or code needs to perform an action when the active context changes,
-add a hook using [`CUDA.atcontextswitch`](@ref).
+If your library or code needs to perform an action when the active context changes, add a
+hook using [`CUDA.atcontextswitch`](@ref).
 """
 function device!(dev::CuDevice, flags=nothing)
     tid = Threads.threadid()
