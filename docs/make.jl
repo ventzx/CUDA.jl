@@ -25,6 +25,7 @@ function main()
         ),
         doctest = true,
         strict = true,
+        modules = [CUDA],
         pages = Any[
             "Home" => "index.md",
             "Tutorials" => Any[
