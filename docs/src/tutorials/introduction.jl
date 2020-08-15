@@ -1,48 +1,45 @@
-# # Introduction
+# # 介绍
 #
-# *A gentle introduction to parallelization and GPU programming in Julia*
+# *这是一篇平和的关于并行化和 Julia GPU 编程的介绍*
 #
-# [Julia](https://julialang.org/) has first-class support for GPU programming: you can use
-# high-level abstractions or obtain fine-grained control, all without ever leaving your
-# favorite programming language. The purpose of this tutorial is to help Julia users take
-# their first step into GPU computing. In this tutorial, you'll compare CPU and GPU
-# implementations of a simple calculation, and learn about a few of the factors that
-# influence the performance you obtain.
+# [Julia](https://julialang.org/)拥有对 GPU 编程最高等的支持：
+# 你可以用高度抽象或得到细粒度的控制，而不需要离开你最爱的编程语言。 
+# 这篇指南的目的是帮助 Julia 用户们迈出他们 GPU 计算的第一步。
+# 在这片指南中，你将会比较 CPU 和 GPU 实行同一个简单的计算，了解到一些会影响到你得到的性能的因素。
 #
-# This tutorial is inspired partly by a blog post by Mark Harris, [An Even Easier
-# Introduction to CUDA](https://devblogs.nvidia.com/even-easier-introduction-cuda/), which
-# introduced CUDA using the C++ programming language. You do not need to read that
-# tutorial, as this one starts from the beginning.
+# 这篇指南部分地受到了一篇 Mark Harris 的博客的启发 [An Even Easier
+# Introduction to CUDA](https://devblogs.nvidia.com/even-easier-introduction-cuda/)。 
+# 那是一篇使用编程语言 C++ 的更加容易的关于 CUDA 的介绍。
+# 你不需要阅读那篇指南，因为这篇会从零开始讲起。
 
 
 
-# ## A simple example on the CPU
+# ## CPU 上的一个简单例子
 
-# We'll consider the following demo, a simple calculation on the CPU.
+# 我们来研究一下这个例子，一个 CPU 上的简单计算。
 
 N = 2^20
 x = fill(1.0f0, N)  # a vector filled with 1.0 (Float32)
 y = fill(2.0f0, N)  # a vector filled with 2.0
 
-y .+= x             # increment each element of y with the corresponding element of x
+y .+= x             #  # 递增y的每个元素和其相应的元素x。
 
-# check that we got the right answer
+# 检查后发现我们得到了正确的答案
 using Test
 @test all(y .== 3.0f0)
 
-# From the `Test Passed` line we know everything is in order. We used `Float32` numbers in
-# preparation for the switch to GPU computations: GPUs are faster (sometimes, much faster)
-# when working with `Float32` than with `Float64`.
+# 从“Test Passed”显示后我们知道一切已经就绪。
+# 我们使用了 Float32 数据类型，为切换到 GPU 计算做准备：
+# GPU 在使用 Float32 类型时比用 Float64 更快（有些时候快得非常多）。
 
-# A distinguishing feature of this calculation is that every element of `y` is being
-# updated using the same operation. This suggests that we might be able to parallelize
-# this.
+# 这个计算的一个显著特征是，y 的每个元素都使用相同的操作进行更新。
+# 这意味着我们可以把它并行化。
 
 
-# ### Parallelization on the CPU
+# ### CPU 上的并行化
 
-# First let's do the parallelization on the CPU. We'll create a "kernel function" (the
-# computational core of the algorithm) in two implementations, first a sequential version:
+# 首先让我们在 CPU 上进行并行化。
+# 我们将创建一个“内核函数”(算法的计算核心)，实现两个版本，第一个是顺序版本：
 
 function sequential_add!(y, x)
     for i in eachindex(y, x)
@@ -55,7 +52,7 @@ fill!(y, 2)
 sequential_add!(y, x)
 @test all(y .== 3.0f0)
 
-# And now a parallel implementation:
+# 现在是并行的实现版本：
 
 # parallel implementation
 function parallel_add!(y, x)
@@ -69,8 +66,7 @@ fill!(y, 2)
 parallel_add!(y, x)
 @test all(y .== 3.0f0)
 
-# Now if I've started Julia with `JULIA_NUM_THREADS=4` on a machine with at least 4 cores,
-# I get the following:
+# 现在，如果我在一台 JULIA_NUM_THREADS=4，意味着至少有4个核的机器上启动 Julia，我将得到以下结果：
 
 @assert Threads.nthreads() == 4     #src
 
@@ -93,29 +89,24 @@ parallel_add!(y, x)
 #   259.587 μs (13 allocations: 1.48 KiB)
 # ```
 
-# You can see there's a performance benefit to parallelization, though not by a factor of 4
-# due to the overhead for starting threads. With larger arrays, the overhead would be
-# "diluted" by a larger amount of "real work"; these would demonstrate scaling that is
-# closer to linear in the number of cores. Conversely, with small arrays, the parallel
-# version might be slower than the serial version.
+#可以看到并行化在性能上有提升，但由于启动线程的开销，这一提升并没有提高到原来的4倍。
+# 当使用较大的数组时，这种开销会被大量的“实际工作”“稀释”；随着内核数增加，将表现出接近于线性的提升。
+# 相反，对于小数组，并行版本可能比串行版本慢。
 
 
 
-# ## Your first GPU computation
+# ## 你的第一次 GPU 计算
 
-# ### Installation
+# ### 安装
 
-# For most of this tutorial you need to have a computer with a compatible GPU and have
-# installed [CUDA](https://developer.nvidia.com/cuda-downloads). You should also install
-# the following packages using Julia's [package
-# manager](https://docs.julialang.org/en/latest/stdlib/Pkg/):
+# 对于本教程的大部分内容，你需要有一台具有兼容 GPU 且安装 [CUDA](https://developer.nvidia.com/cuda-downloads) 的计算机。
+# 您还应该使用 Julia [包管理器](https://docs.julialang.org/en/latest/stdlib/Pkg/)安装以下包：
 
 # ```julia
 # pkg> add CUDA
 # ```
 
-# If this is your first time, it's not a bad idea to test whether your GPU is working by
-# testing the CUDA.jl package:
+# 如果这是你的第一次使用，通过测试 CUDA.jl 包来测试你的 GPU 是否在工作是个不错的主意。
 
 # ```julia
 # pkg> add CUDA
@@ -123,23 +114,22 @@ parallel_add!(y, x)
 # ```
 
 
-# ### Parallelization on the GPU
+# ### GPU 上的并行化
 
-# We'll first demonstrate GPU computations at a high level using the `CuArray` type,
-# without explicitly writing a kernel function:
+# 我们将首先演示使用 CuArray 类型的高级 GPU 计算，而不显式地编写内核函数：
 
 using CUDA
 
 x_d = CUDA.fill(1.0f0, N)  # a vector stored on the GPU filled with 1.0 (Float32)
 y_d = CUDA.fill(2.0f0, N)  # a vector stored on the GPU filled with 2.0
 
-# Here the `d` means "device," in contrast with "host". Now let's do the increment:
+# 这里 d 的意思是“设备”，与“主机”相对。现在我们来产生一些增量：
 
 y_d .+= x_d
 @test all(Array(y_d) .== 3.0f0)
 
-# The statement `Array(y_d)` moves the data in `y_d` back to the host for testing. If we
-# want to benchmark this, let's put it in a function:
+# 语句数组 (y_d) 将 y_d 中的数据移回主机进行测试。
+# 如果我们想对它进行基准测试，我们把它放到一个函数中：
 
 function add_broadcast!(y, x)
     CUDA.@sync y .+= x
@@ -154,26 +144,22 @@ end
 #   67.047 μs (84 allocations: 2.66 KiB)
 # ```
 
-# The most interesting part of this is the call to `CUDA.@sync`. The CPU can assign
-# jobs to the GPU and then go do other stuff (such as assigning *more* jobs to the GPU)
-# while the GPU completes its tasks. Wrapping the execution in a `CUDA.@sync` block
-# will make the CPU block until the queued GPU tasks are done, similar to how `Base.@sync`
-# waits for distributed CPU tasks. Without such synchronization, you'd be measuring the
-# time takes to launch the computation, not the time to perform the computation. But most
-# of the time you don't need to synchronize explicitly: many operations, like copying
-# memory from the GPU to the CPU, implicitly synchronize execution.
+# 最有趣的部分是对 `CUDA.@sync` 的调用。
+# CPU 可以分配任务给 GPU，然后去做其他的事情（比如分配*更多的*任务给 GPU），而 GPU 完成它的任务。
+# 在 `CUDA.@sync` 块中封装执行会使CPU阻塞，直到队列中的 GPU 任务完成，类似 `Base.@sync` 等待 CPU 任务的方式。
+# 如果没有这样的同步，你需要考虑的是启动计算所花费的时间，而不是执行计算的时间。
+# 但大多数时候，你不需要显式同步：有许多执行方法，如从 GPU 复制内存到 CPU，隐式同步执行。
 
-# For this particular computer and GPU, you can see the GPU computation was significantly
-# faster than the single-threaded CPU computation, and that the use of multiple CPU threads makes
-# the CPU implementation competitive. Depending on your hardware you may get different
-# results.
+# 从这个特殊的计算机和 GPU 中，你可以看到 GPU 的计算速度明显快于单线程的 CPU 计算，
+# 而 CPU 多线程的使用使得用 CPU 实现的版本具有竞争力。
+# 根据硬件的不同，可能会得到不同的结果。
 
 
-# ### Writing your first GPU kernel
+# ### 编写你的第一个 GPU 核函数
 
-# Using the high-level GPU array functionality made it easy to perform this computation
-# on the GPU. However, we didn't learn about what's going on under the hood, and that's the
-# main goal of this tutorial. So let's implement the same functionality with a GPU kernel:
+# 使用高级的 GPU 数组函数使得在 GPU 上执行这一计算变得很容易。
+# 然而，我们还并不了解底层的工作原理，而这正是本教程的主要目标。
+# 那么让我们用 GPU 核函数实现相同的功能：
 
 function gpu_add1!(y, x)
     for i = 1:length(y)
@@ -186,13 +172,12 @@ fill!(y_d, 2)
 @cuda gpu_add1!(y_d, x_d)
 @test all(Array(y_d) .== 3.0f0)
 
-# Aside from using the `CuArray`s `x_d` and `y_d`, the only GPU-specific part of this is the
-# *kernel launch* via `@cuda`. The first time you issue this `@cuda` statement, it will
-# compile the kernel (`gpu_add1!`) for execution on the GPU. Once compiled, future
-# invocations are fast. You can see what `@cuda` expands to using `?@cuda` from the Julia
-# prompt.
+# 除了使用 `CuArray`s `x_d` 和 `y_d` 之外，唯一与 GPU 相关的部分是通过 `@cuda` 进行的*核函数启动*。
+# 当您第一次发出这个 `@cuda` 语句时，它将编译核函数 (`gpu_add1!`) 用于在GPU上执行。
+# 一旦编译，以后的调用会很快。
+# 你可以用 ?@cuda` 语句从 Julia 提示中查看 `@cuda` 的扩展。
 
-# Let's benchmark this:
+# 让我们测试一下这个：
 
 function bench_gpu1!(y, x)
     CUDA.@sync begin
@@ -208,30 +193,26 @@ end
 #   119.783 ms (47 allocations: 1.23 KiB)
 # ```
 
-# That's a *lot* slower than the version above based on broadcasting. What happened?
+# 这比上面基于 broadcasting 的版本要*慢得多*。发生了什么？
 
+# ### 分析
 
-# ### Profiling
-
-# When you don't get the performance you expect, usually your first step should be to
-# profile the code and see where it's spending its time. For that, you'll need to be able to
-# run NVIDIA's [`nvprof`
-# tool](https://devblogs.nvidia.com/cuda-pro-tip-nvprof-your-handy-universal-gpu-profiler/).
-# On Unix systems, launch Julia this way:
+# 当您没有获得预期的性能时，通常您的第一步应该是分析代码并查看它在哪里花费了时间。
+# 为此，你需要能够运行 NVIDIA的 [`nvprof`tool](https://devblogs.nvidia.com/cuda-pro-tip-nvprof-your-handy-universal-gpu-profiler/) 工具。
+# 在 Unix 系统上，这样启动 Julia：
 #
 # ```sh
 # $ nvprof --profile-from-start off /path/to/julia
 # ```
 #
-# replacing the `/path/to/julia` with the path to your Julia binary. Note that we don't
-# immediately start the profiler, but instead call into the CUDA APIs and manually start the
-# profiler with `CUDq.@profile` (thus excluding the time to compile our kernel):
+# 用你的 Julia 二进制文件的路径替换 `/path/to/julia`。
+# 注意，我们不会立即启动剖析器，而是调用 CUDA 接口，用 `CUDq.@profile` 手动启动剖析器。
+# 这样就排除了编译内核的时间：
 
 bench_gpu1!(y_d, x_d)  # run it once to force compilation
 CUDA.@profile bench_gpu1!(y_d, x_d)
 
-# When we quit the Julia REPL, the profiler process will print information about the
-# executed kernels and API calls:
+# W当我们退出 Julia REPL 时，profiler进程将打印关于执行核函数和接口调用的信息：
 
 # ```
 # ==2574== Profiling result:
@@ -244,15 +225,13 @@ CUDA.@profile bench_gpu1!(y_d, x_d)
 #                     0.00%     960ns         2     480ns     358ns     602ns  cuCtxGetCurrent
 # ```
 
-# You can see that 100% of the time was spent in `ptxcall_gpu_add1__1`, the name of the
-# kernel that CUDA.jl assigned when compiling `gpu_add1!` for these inputs. (Had you created
-# arrays of multiple data types, e.g., `xu_d = CUDA.fill(0x01, N)`, you might have also seen
-# `ptxcall_gpu_add1__2` and so on. Like the rest of Julia, you can define a single method
-# and it will be specialized at compile time for the particular data types you're using.)
+# 您可以看到100%的时间都花在了 `ptxcall_gpu_add1__1` 上。这是当为了这些输入编译 `gpu_add1!` 时，CUDA.jl 分配的那个核函数的名字。
+# （你是否创建了多个数据类型的数组，例如 `xu_d = CUDA.fill(0x01, N)`，
+# 你也许还见过 `ptxcall_gpu_add1__2` 和其他的。
+# 与 Julia 的其他部分一样，您可以定义单个方法，它将在编译时，针对您正在使用的特定数据类型进行专门化。)
 
-# For further insight, run the profiling with the option `--print-gpu-trace`. You can also
-# invoke Julia with as argument the path to a file containing all commands you want to run
-# (including a call to `CUDA.@profile`):
+# 为了进一步了解情况，使用 `--print-gpu-trace` 运行分析。
+# 你也可以用一个包含所有你想要运行的命令的文件路径参数来调用 Julia（包括对 `CUDA.@profile` 的调用）：
 #
 # ```sh
 # $ nvprof --profile-from-start off --print-gpu-trace /path/to/julia /path/to/script.jl
@@ -260,22 +239,18 @@ CUDA.@profile bench_gpu1!(y_d, x_d)
 #   13.3134s  245.04ms     (1 1 1)      (1 1 1)        20        0B        0B  GeForce GTX TIT         1         7  ptxcall_gpu_add1__1 [34]
 # ```
 
-# The key thing to note here is the `(1 1 1)` in the "Grid Size" and "Block Size" columns.
-# These terms will be explained shortly, but for now, suffice it to say that this is an
-# indication that this computation ran sequentially. Of note, sequential processing with
-# GPUs is much slower than with CPUs; where GPUs shine is with large-scale parallelism.
+# T这里要注意的关键是“Grid Size”和“Block Size”列中的`(1 1 1)`。
+# 这些术语稍后会进行解释，但是现在，只要指出这表明这个计算是按顺序运行的就足够了。
+# 值得注意的是，用 GPU 进行顺序处理要比用 CPU 慢得多；GPU 的亮点在于大规模并行。
 
 
-# ### Writing a parallel GPU kernel
+# ### 编写一个平行的 GPU 核函数
 
-# To speed up the kernel, we want to parallelize it, which means assigning different tasks
-# to different threads.  To facilitate the assignment of work, each CUDA thread gets access
-# to variables that indicate its own unique identity, much as
-# [`Threads.threadid()`](https://docs.julialang.org/en/latest/manual/parallel-computing/#Multi-Threading-(Experimental)-1)
-# does for CPU threads. The CUDA analogs of `threadid` and `nthreads` are called
-# `threadIdx` and `blockDim`, respectively; one difference is that these return a
-# 3-dimensional structure with fields `x`, `y`, and `z` to simplify cartesian indexing for
-# up to 3-dimensional arrays. Consequently we can assign unique work in the following way:
+# 为了加速内核，我们希望并行化它，这意味着将不同的任务分配给不同的线程。 To facilitate the assignment of work, each CUDA thread gets access
+# 为了方便分配工作，每个CUDA线程都可以访问表示自己唯一身份的变量，就像 [`Threads.threadid()`](https://docs.julialang.org/en/latest/manual/parallel-computing/#Multi-Threading-(Experimental)-1) 对CPU线程一样。
+# `threadid` 和 `nthreads` 在 CUDA 中的类似物分别被称为 `threadIdx` 和 `blockDim`；
+# 其中一个不同点在于，它们返回一个包含字段 x、y 和 z 的三维结构，以简化最多用于三维数组的笛卡尔索引。
+# 因此，我们可以通过以下方式分配独特的工作：
 
 function gpu_add2!(y, x)
     index = threadIdx().x    # this example only requires linear indexing, so just use `x`
@@ -290,11 +265,10 @@ fill!(y_d, 2)
 @cuda threads=256 gpu_add2!(y_d, x_d)
 @test all(Array(y_d) .== 3.0f0)
 
-# Note the `threads=256` here, which divides the work among 256 threads numbered in a
-# linear pattern. (For a two-dimensional array, we might have used `threads=(16, 16)` and
-# then both `x` and `y` would be relevant.)
+# 注意这里的 `threads=256`，它将工作划分为 256 个用线性模式编号的线程。
+# （对于二维数组，我们可以使用 `threads=(16, 16)`，然后`x`和`y`都是相关的。） 
 
-# Now let's try benchmarking it:
+# 现在让我们尝试对它进行测试：
 
 function bench_gpu2!(y, x)
     CUDA.@sync begin
@@ -310,22 +284,19 @@ end
 #   1.873 ms (47 allocations: 1.23 KiB)
 # ```
 
-# Much better!
+# 好多了！
 
-# But obviously we still have a ways to go to match the initial broadcasting result. To do
-# even better, we need to parallelize more. GPUs have a limited number of threads they can
-# run on a single *streaming multiprocessor* (SM), but they also have multiple SMs. To take
-# advantage of them all, we need to run a kernel with multiple *blocks*. We'll divide up
-# the work like this:
+# 但显然，我们还有很长的路要走，以达到最初用 broadcasting 实现的结果。
+# 为了做得更好，我们需要更多的并行化。GPU 在*单流多处理器*（SM）上运行的线程数量有限，但与此同时它也有多个 SM。
+# 为了充分利用它们，我们需要运行一个具有多个*块*的核函数。
+# 我们将这样分配工作:
 #
 # ![block grid](intro1.png)
 #
-# This diagram was [borrowed from a description of the C/C++
-# library](https://devblogs.nvidia.com/even-easier-introduction-cuda/); in Julia, threads
-# and blocks begin numbering with 1 instead of 0. In this diagram, the 4096 blocks of 256
-# threads (making 1048576 = 2^20 threads) ensures that each thread increments just a single
-# entry; however, to ensure that arrays of arbitrary size can be handled, let's still use a
-# loop:
+# 此图[借用了 C/ C++ 库的描述](https://devblogs.nvidia.com/even-easier-introduction-cuda/); 
+# 在Julia中，线程和块从1而不是0开始编号。
+# 在这个图中，由 256 个线程组成的 4096 块（即 1048576 = 2^20 个线程）确保每个线程只递增一个条目；
+# 但是，为了确保可以处理任意大小的数组，我们仍然用了一个循环：
 
 function gpu_add3!(y, x)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -359,8 +330,8 @@ end
 #   67.268 μs (52 allocations: 1.31 KiB)
 # ```
 
-# Finally, we've achieved the similar performance to what we got with the broadcasted
-# version. Let's run `nvprof` again to confirm this launch configuration:
+# 最后，我们取得了与 broadcast 版本差不多的性能。
+# 让我们再次运行 `nvprof` 来确认这个启动配置：
 #
 # ```
 # ==23972== Profiling result:
@@ -369,10 +340,9 @@ end
 # ```
 
 
-# ### Printing
+# ### 打印
 
-# When debugging, it's not uncommon to want to print some values. This is achieved with
-# `@cuprint`:
+# 在调试时，需要打印一些值是很常见的。 这是通过 `@cuprint` 实现的：
 
 function gpu_add2_print!(y, x)
     index = threadIdx().x    # this example only requires linear indexing, so just use `x`
@@ -387,54 +357,50 @@ end
 @cuda threads=16 gpu_add2_print!(y_d, x_d)
 synchronize()
 
-# Note that the printed output is only generated when synchronizing the entire GPU with
-# `synchronize()`. This is similar to `CUDA.@sync`, and is the counterpart of
-# `cudaDeviceSynchronize` in CUDA C++.
+# 注意，打印输出只有在使用 `synchronize()` 同步整个 GPU 时才生成。
+# 这和 `CUDA.@sync` 很相似，是 `cudaDeviceSynchronize` 在 CUDA C++中的对应。
 
 
-# ### Error-handling
+# ### 错误处理
 
-# The final topic of this intro concerns the handling of errors. Note that the kernels
-# above used `@inbounds`, but did not check whether `y` and `x` have the same length. If
-# your kernel does not respect these bounds, you will run into nasty errors:
+# 本介绍的最后一个主题是关于错误的处理。
+# 注意，上面的核函数使用了 `@inbounds`，但是没有检查 `y` 和 `x` 是否有相同的长度。
+# 如果你的内核不遵守这些范围，你将会陷入严重的错误：
 
 # ```
 # ERROR: CUDA error: an illegal memory access was encountered (code #700, ERROR_ILLEGAL_ADDRESS)
-# Stacktrace:
+# 堆栈跟踪：
 #  [1] ...
 # ```
 
-# If you remove the `@inbounds` annotation, instead you get
+# 如果删除 `@inbounds` 注释，则会得到
 #
 # ```
 # ERROR: a exception was thrown during kernel execution.
-#        Run Julia on debug level 2 for device stack traces.
+#        在调试级别 2 上运行 Julia 以跟踪设备堆栈。
 # ```
 
-# As the error message mentions, a higher level of debug information will result in a more
-# detailed report. Let's run the same code with with `-g2`:
+# 正如错误消息所提到的，更高级别的调试信息将产生更详细的报告。
+# 让我们运行与 `-g2` 相同的代码：
 #
 # ```
 # ERROR: a exception was thrown during kernel execution.
-# Stacktrace:
+# 堆栈跟踪：
 #  [1] throw_boundserror at abstractarray.jl:484
 #  [2] checkbounds at abstractarray.jl:449
 #  [3] setindex! at /home/tbesard/Julia/CUDA/src/device/array.jl:79
 #  [4] some_kernel at /tmp/tmpIMYANH:6
 # ```
 
-# !!! warning
+# !!! 警告
 #
-#     On older GPUs (with a compute capability below `sm_70`) these errors are fatal,
-#     and effectively kill the CUDA environment. On such GPUs, it's often a good idea to
-#     perform your "sanity checks" using code that runs on the CPU and only turn over the
-#     computation to the GPU once you've deemed it to be safe.
+#     在旧的 GPU 上（计算能力低于 `sm_70`），这些错误是致命的，且会有效地杀死 CUDA 环境。
+#     在这样的 GPU 上，使用运行在 CPU 上的代码来执行你的“完整性检查”通常是一个好主意，只有当你认为它安全的时候才将计算交给 GPU。
 
 
 
-# ## Summary
+# ## 总结
 
-# Keep in mind that the high-level functionality of CUDA often means that you don't
-# need to worry about writing kernels at such a low level. However, there are many cases
-# where computations can be optimized using clever low-level manipulations. Hopefully, you
-# now feel comfortable taking the plunge.
+# 请记住，CUDA 的高级功能通常意味着您不需要担心如何在底层编写核函数。
+# 然而，在许多情况下，可以使用聪明的底层操作来优化计算。
+# 希望你现在适应了这种大胆的操作。
