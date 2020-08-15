@@ -36,7 +36,7 @@ Pkg.test("CUDA")
 
 Julia CUDA 堆栈是许多人们共同努力的结果。以下的用户做出了相当重要的贡献：
 
-- Tim Besard (@maleadt) (lead developer)
+- Tim Besard (@maleadt) (主导开发者)
 - Valentin Churavy (@vchuravy)
 - Mike Innes (@MikeInnes)
 - Katharine Hyatt (@kshyatt)
