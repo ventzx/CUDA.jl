@@ -1,26 +1,22 @@
-# CUDA programming in Julia
+# 利用 Julia 进行 CUDA 编程
 
-The CUDA.jl package is the main entrypoint for for programming NVIDIA GPUs using CUDA. The
-package makes it possible to do so at various abstraction levels, from easy-to-use arrays
+CUDA.jl 是使用 CUDA 的英伟达 GPU 编程的主要进入点。这个包允许使用者进行多个复杂度层次上的使用，从简单易用的数组到手工写的，使用底层的 CUDA 接口的核函数
 down to hand-written kernels using low-level CUDA APIs.
 
-If you have any questions, please feel free to use the `#gpu` channel on the [Julia
-slack](https://julialang.slack.com/), or the [GPU domain of the Julia
-Discourse](https://discourse.julialang.org/c/domain/gpu).
+如果你有任何问题，请随意使用[Julia slack](https://julialang.slack.com/)，或者 [GPU domain of the Julia Discourse](https://discourse.julialang.org/c/domain/gpu)。
 
 
-## Quick Start
+## 快速开始
 
-The Julia CUDA stack requires a functional CUDA-setup, which includes both a driver and
-matching toolkit. Once you've set that up, continue by installing the CUDA.jl package:
+Julia CUDA 堆栈需要一个基础的 CUDA 设置，它包含了一个驱动程序和一个工具包。
+一旦你设置完成，请继续安装 CUDA.jl 包：
 
 ```julia
 using Pkg
 Pkg.add("CUDA")
 ```
 
-To make sure everything works as expected, try to load the package and if you have the time
-execute its test suite:
+为了确保一切都像预计中那样工作，请尝试加载包裹。如果你有时间，请执行它的测试套件：
 
 ```julia
 using CUDA
@@ -29,21 +25,16 @@ using Pkg
 Pkg.test("CUDA")
 ```
 
-For more details on the installation process, consult the [Installation](@ref
-InstallationOverview) section. To understand the toolchain in more detail, have a look at
-the tutorials in this manual. **It is highly recommended that new users start with the
-[Introduction](@ref) tutorial**. For an overview of the available functionality, read the
-[Usage](@ref UsageOverview) section. The following resources may also be of interest:
+想要更多关于安装过程的细节，请查阅[安装](@refInstallationOverview)章节。为了能更细节地了解工具链，请看一下这本指南里的教程。**我们强烈推荐新用户从[教程简介](@ref)开始**。请阅读[用法](@ref UsageOverview)章节以获得一个对于可用的函数的全面了解。下列的资源你可能也会感兴趣：
 
-- Effectively using GPUs with Julia: [video](https://www.youtube.com/watch?v=7Yq1UyncDNc),
-  [slides](https://docs.google.com/presentation/d/1l-BuAtyKgoVYakJSijaSqaTL3friESDyTOnU2OLqGoA/)
-- How Julia is compiled to GPUs: [video](https://www.youtube.com/watch?v=Fz-ogmASMAE)
+- 用 Julia 有效利用 GPU：视频/幻灯片[视频](https://www.youtube.com/watch?v=7Yq1UyncDNc),
+  [幻灯片](https://docs.google.com/presentation/d/1l-BuAtyKgoVYakJSijaSqaTL3friESDyTOnU2OLqGoA/)
+- Julia 如何在 GPU 上编译：[视频](https://www.youtube.com/watch?v=Fz-ogmASMAE)
 
 
-## Acknowledgements
+## 后记
 
-The Julia CUDA stack has been a collaborative effort by many individuals. Significant
-contributions have been made by the following individuals:
+Julia CUDA 堆栈是许多人们共同努力的结果。以下的用户做出了相当重要的贡献：
 
 - Tim Besard (@maleadt) (lead developer)
 - Valentin Churavy (@vchuravy)
@@ -52,11 +43,7 @@ contributions have been made by the following individuals:
 - Simon Danisch (@SimonDanisch)
 
 
-## Supporting and Citing
+## 支持和引用
 
-Much of the software in this ecosystem was developed as part of academic research. If you
-would like to help support it, please star the relevant repository as such metrics may help
-us secure funding in the future. If you use our software as part of your research, teaching,
-or other activities, we would be grateful if you could cite our work. The
-[CITATION.bib](https://github.com/JuliaGPU/CUDA.jl/blob/master/CITATION.bib) at the top of
-this repository lists the relevant papers.
+这个生态圈中的许多软件是作为学术研究的一部分而开发的。 如果您愿意支持它，请星标相关的储存库，因为这些参数能帮助我们在未来稳定地集资。如果您在您的研究/教学或其他活动中使用了我们的软件，我们会非常感激如果您引用我们的工作。 
+[引用](https://github.com/JuliaGPU/CUDA.jl/blob/master/CITATION.bib) 在这个存储库的顶部的号码布列出了相关的文件。
