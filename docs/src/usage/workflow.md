@@ -1,22 +1,16 @@
-# Workflow
+# 工作流
 
-A typical approach for porting or developing an application for the GPU is as follows:
+为GPU移植或开发应用程序的典型方法如下:
 
-1. develop an application using generic array functionality, and test it on the CPU with the
-   `Array` type
-2. port your application to the GPU by switching to the `CuArray` type
-3. disallow the CPU fallback ("scalar indexing") to find operations that are not implemented
-   for or incompatible with GPU execution
-4. (optional) use lower-level, CUDA-specific interfaces to implement missing functionality
-   or optimize performance
+1. 使用通用数组功能开发一个应用程序，并使用`数组`类型在CPU上测试它。
+2. 通过切换到 `CuArray` 类型，将应用程序移植到GPU。
+3. 通过切换到 CuArray 类型将你的应用程序移植到 GPU 不允许 CPU 后退（“标量索引”）来查找未实现的或与 GPU 执行不兼容的操作。
+4. （可选）使用较低级的、cuda 特有的接口来实现缺少的功能或优化性能。
 
 
-## [Scalar indexing](@id UsageWorkflowScalar)
+## [标量索引](@id UsageWorkflowScalar)
 
-To facilitate porting code, `CuArray` supports executing so-called "scalar code" which
-processes one element at a time, e.g., in a for loop. Given how a GPU works, this is
-extremely slow and will negate any performance benefit of using a GPU. As such, you will be
-warned when performing this kind of iteration:
+为了便于移植代码，`CuArray` 支持执行所谓的“标量代码”，即在 for 循环中一次处理一个元素。考虑到 GPU 的工作方式，这是极其缓慢的，并将抹去使用 GPU 带来的任何性能提升。因此，在执行这种迭代时，您会得到警告：
 
 ```julia
 julia> a = CuArray([1])
@@ -29,8 +23,7 @@ julia> a[1] += 1
 2
 ```
 
-Once you've verified that your application executes correctly on the GPU, you should
-disallow scalar indexing and use GPU-friendly array operations instead:
+一旦你验证了你的应用程序在GPU上正确执行，你应该不允许使用标量索引，而是使用GPU友好的数组操作：
 
 ```julia
 julia> CUDA.allowscalar(false)
@@ -48,8 +41,8 @@ julia> a .+ 1
  2
 ```
 
-Many array operations however have been implemented themselves using scalar indexing. As a
-result, calling into a seemingly GPU-friendly array operation might error out:
+然而，许多数组操作本身都是使用标量索引实现的。
+因此，调用一个看起来对 GPU 友好的数组操作可能会出错：
 
 ```julia
 julia> a = CuArray([1,2])
@@ -64,6 +57,4 @@ julia> var(a,dims=1)
 ERROR: scalar getindex is disallowed
 ```
 
-To resolve such issues, many array operations for `CuArray` are replaced with GPU-friendly
-alternatives. If you run into a case like this, have a look at the CUDA.jl issue tracker and
-file a bug report if there isn't one yet.
+为了解决这些问题，`CuArray` 的许多数组操作被替换为对 GPU 友好的替代方案。如果你遇到这样的情况，可以看看 CUDA.jl 问题跟踪器，如果还没有的话，可以提交一个 bug 报告。
