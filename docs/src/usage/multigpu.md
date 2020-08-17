@@ -1,18 +1,14 @@
-# Multiple GPUs
+# 多 GPU 协作
 
-There are different ways of working with multiple GPUs: using one or more threads,
-processes, or systems. Although all of these are compatible with the Julia CUDA toolchain,
-the support is a work in progress and the usability of some combinations can be
-significantly improved.
+多 GPU 协作有不同的方式：可以使用一个或多个线程、进程或系统。虽然所有这些都与 Julia CUDA 工具链兼容，但还有待完善，一些组合的可用性将会得到显著改善。
 
 
-## Scenario 1: One GPU per process
+## 情景 1：每个 GPU 处理一个进程
 
-The easiest solution that maps best onto Julia's existing facilities for distributed
-programming, is to use one GPU per processL
+最简单且是在 Julia 现有的分布式编程设施上最佳的解决方案，即每个进程使用一个GPU。
 
 ```julia
-# spawn one worker per device
+# 每个 GPU 产生一个工人
 using Distributed, CUDA
 addprocs(length(devices()))
 @everywhere using CUDA
@@ -26,44 +22,35 @@ asyncmap((zip(workers(), devices()))) do (p, d)
 end
 ```
 
-Communication between nodes should happen via the CPU (the CUDA IPC APIs are available as
-`CUDA.cuIpcOpenMemHandle` and friends, but not available through high-level wrappers).
+节点之间的通信应该通过 CPU 进行（CUDA IPC API 以 `CUDA.cuIpcOpenMemHandle` 和 friends 的形式提供，但不能通过高级封装器提供）。
 
-Alternatively, one can use [MPI.jl](https://github.com/JuliaParallel/MPI.jl) together with
-an CUDA-aware MPI implementation. In that case, `CuArray` objects can be passed as send and
-receive buffers to point-to-point and collective operations to avoid going through the CPU.
+另外，也可以将 [MPI.jl](https://github.com/JuliaParallel/MPI.jl) 与 CUDA-aware MPI 工具一起使用。在这种情况下，`CuArray` 对象可以作为点对点/集体操作的发送/接收缓冲区传递，以避免通过CPU。
 
 
-## Scenario 2: Multiple GPUs per process
+## 情景 2：多个 GPU 处理一个进程
 
-In a similar vein to the multi-process solution, one can work with multiple devices from
-within a single process by calling `CUDA.device!` to switch to a specific device.
-Allocations are however currently not tied to a device, so one should take care to only
-work with data on the device it was allocated on.
+与多进程解决方案类似，通过调用 `CUDA.device!` 来切换到特定的 GPU，从而在一个进程中使用多个 GPU。
+然而，分配目前并不与 GPU 挂钩，所以应该注意只用分配到当前 GPU 上的数据工作。
 
 !!! warning
 
-    The CUDA memory pool is not device-aware yet, effectively breaking
-    multi-gpu-single-process concurrency. Don't use this approach for serious work
-    unless you can support with cross-device memory operations (e.g. with
-    `cuCtxEnablePeerAccess`).
+   CUDA 内存池还没有设备感知，有效地打破了多 GPU-单进程的并发。
+   除非你能支持跨设备的内存操作（例如使用 `cuCtxEnablePeerAccess`），否则不要将这种方法用于严肃的工作。
 
-To avoid these difficulties, you can use unified memory that is accessible from all devices.
-These APIs are available through high-level wrappers, but not exposed by the `CuArray`
-constructors yet:
+为了避免这些困难，你可以使用所有设备都能访问的统一内存。
+这些 API 可以通过高级包装器获得，但还没有被 `CuArray` 构造函数所公开：
 
 ```julia
 using CUDA
 
 gpus = Int(length(devices()))
 
-# generate CPU data
+# 生成 CPU 数据
 dims = (3,4,gpus)
 a = round.(rand(Float32, dims) * 100)
 b = round.(rand(Float32, dims) * 100)
 
-# CuArray doesn't support unified memory yet,
-# so allocate our own buffers
+# CuArray 还不支持统一内存，所以分配我们自己的缓冲区。
 buf_a = Mem.alloc(Mem.Unified, sizeof(a))
 d_a = unsafe_wrap(CuArray{Float32,3}, convert(CuPtr{Float32}, buf_a),
                   dims; own=true)
@@ -77,8 +64,7 @@ d_c = unsafe_wrap(CuArray{Float32,3}, convert(CuPtr{Float32}, buf_c),
                   dims; own=true)
 ```
 
-The data allocated here uses the GPU id as a the outermost dimension, which can be used to
-extract views of contiguous memory that represent the slice to be processed by a single GPU:
+这里分配的数据使用 GPU id 作为最外侧的维度，它可以用来提取连续内存的视图，这些视图代表了要被单个 GPU 处理的切片：
 
 ```julia
 for (gpu, dev) in enumerate(devices())
@@ -87,11 +73,11 @@ for (gpu, dev) in enumerate(devices())
 end
 ```
 
-Before downloading the data, make sure to synchronize the devices:
+在下载数据之前，请确保同步设备：
 
 ```julia
 for dev in devices()
-    # NOTE: normally you'd use events and wait for them
+    # 注意：通常情况下，你会使用事件，并等待他们。
     device!(dev)
     synchronize()
 end
@@ -102,9 +88,6 @@ c = Array(d_c)
 ```
 
 
-## Scenario 3: One GPU per thread
+## 情景 3：每个 GPU 处理一个线程
 
-This approach is not recommended, as multi-threading is a fairly recent addition to the
-language and many packages, including those for Julia GPU programming, have not been made
-thread-safe yet. For now, the toolchain mimics the behavior of the CUDA runtime library and
-uses a single context across all devices.
+不建议采用这种方法，因为多线程是最近才被加入 Julia 中的，很多包，包括 Julia GPU 编程的包，都还没有做到线程安全。目前，该工具链模仿了 CUDA 运行库的行为，并在所有设备上使用同一环境。
