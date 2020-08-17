@@ -1,4 +1,3 @@
-# Array programming
+# 数组编程
 
-The CUDA array type, `CuArray`, generally implements the Base array interface and all of its
-expected methods.
+CUDA 数组类型 `CuArray` 基本已经实现了 Base 数组接口及其所有预期的方法。
