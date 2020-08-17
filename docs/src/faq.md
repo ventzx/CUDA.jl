@@ -1,16 +1,11 @@
-# Frequently Asked Questions
+# 常见问题
 
-This page is a compilation of frequently asked questions and answers.
+本页是常见问题和答案的汇编。
 
 
-## Can you wrap this or that CUDA API?
+## 你能包装这个或那个 CUDA API 吗？
 
-If a certain API isn't wrapped with some high-level functionality, you can always use the
-underlying C APIs which are always available as unexported methods. For example, you can
-access the CUDA driver library as `cu` prefixed, unexported functions like
-`CUDA.cuDriverGetVersion`. Similarly, vendor libraries like CUBLAS are available through
-their exported submodule handles, e.g., `CUBLAS.cublasGetVersion_v2`.
+如果某个 API没 有被一些高级功能所包裹，你总是可以使用底层的 C API，这些 API 总是作为未导出的方法。例如，你可以用 `cu` 前缀的，未导出的函数如 `CUDA.cuDriverGetVersion` 来访问CUDA驱动库。同样，像 CUBLAS 这样的厂商库也可以通过其导出的子模块句柄获得，例如 `CUBLAS.cublasGetVersion_v2`。
 
-Any help on designing or implementing high-level wrappers for this low-level functionality
-is greatly appreciated, so please consider contributing your uses of these APIs on the
-respective repositories.
+我们非常感激任何关于设计或实现这些低级功能的高级封装器的帮助，所以请考虑在你们各自的资源库中贡献你对这些 API 的用法。
+
