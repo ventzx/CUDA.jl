@@ -46,7 +46,7 @@ julia> cu(cpu)
   ⋅   2.0
 ```
 
-!!! 警告
+!!! warning
 
     `cu` 函数是很固执的，坚持将输入标量转换为 `Float32` 类型。
     这通常是一个很好的决定，因为 `Float64` 和许多其他标量类型在 GPU 上的表现很糟糕。
@@ -94,7 +94,7 @@ CUDA GPU memory usage: 0 bytes
 BinnedPool usage: 0 bytes (0 bytes allocated, 0 bytes cached)
 ```
 
-!!! 注
+!!! note
 
     在执行任何高级 GPU 阵列操作之前，绝不应该请求手动回收内存。分配的功能本身应该被调用到内存池，并在必要时释放任何缓存内存。如果只因没有事先手动回收内存而遇到内存不足的情况，说明出了 bug。
 
