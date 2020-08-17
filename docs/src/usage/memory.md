@@ -21,7 +21,7 @@ copyto!(gpu, cpu)
 
 ## 保存类型的上传
 
-In many cases, you might not want to convert your input data to a dense `CuArray`。例如，对于数组包装器，你会希望在 GPU 上保留该包装器类型，只上传其中的数据。[Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) 包正是这样做的，它包含了一个关于如何解包和重构类型（如数组封装）的规则列表，以便我们在诸如将数据上传到 GPU 时可以保留类型：
+在许多情况下，您可能不想将输入转换为密集的 `CuArray` 类型。例如，对于数组包装器，你会希望在 GPU 上保留该包装器类型，只上传其中的数据。[Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) 包正是这样做的，它包含了一个关于如何解包和重构类型（如数组封装）的规则列表，以便我们在诸如将数据上传到 GPU 时可以保留类型：
 
 ```julia-repl
 julia> cpu = Diagonal([1,2])     # wrapped data on the CPU
