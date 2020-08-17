@@ -1,4 +1,4 @@
-# Array programming
+# 数组编程
 
 ```@meta
 DocTestSetup = quote
@@ -11,28 +11,16 @@ DocTestSetup = quote
 end
 ```
 
-The easiest way to use the GPU's massive parallelism, is by expressing operations in terms
-of arrays: CUDA.jl provides an array type, `CuArray`, and many specialized array operations
-that execute efficiently on the GPU hardware. In this section, we will briefly demonstrate
-use of the `CuArray` type. Since we expose CUDA's functionality by implementing existing
-Julia interfaces on the `CuArray` type, you should refer to the [upstream Julia
-documentation](https://docs.julialang.org) for more information on these operations.
+在 CUDA 数组上进行运算是利用 GPU 强大并行计算能力最简单的方法，它提供了一种数组 `CUArray` 和许多在 GPU 硬件上高效计算的数组。我们将在这一部分简单的示范`CUArray`类型的使用。
+由于我们通过在`CuArray`类型上实现现有的 Julia 接口来暴露 CUDA 的功能，所以你应该参考[上游的 Julia 文档](https://docs.julialang.org)来了解这些操作的更多信息。
+如果你遇到缺掉的函数或者进行了触发["常量迭代"](@UsageWorkflowScalar)的运算，请看一下[问题追踪](https://github.com/JuliaGPU/CUDA.jl/issues)。如果其中没有相关问题，请创建一个。
 
-If you encounter missing functionality, or are running into operations that trigger
-so-called ["scalar iteration"](@UsageWorkflowScalar), have a look at the [issue
-tracker](https://github.com/JuliaGPU/CUDA.jl/issues) and file a new issue if there's none.
-Do note that you can always access the underlying CUDA APIs by calling into the relevant
-submodule. For example, if parts of the Random interface isn't properly implemented by
-CUDA.jl, you can look at the CURAND documentation and possibly call methods from the
-`CURAND` submodule directly. These submodules are available after importing the CUDA
-package.
+记住你总是可以通过调用相关的子模块来调用CUDA的API例如，如果部分随机数接口不能被 CUDA 正常应用，你可以看一下 CUDARAND 文件，有可能可以直接从 `CURAND` 子模块中调用方法。在导入 CUDA 包之后，这些子模块都是可用的
 
 
-## Construction and Initialization
+## 建设和初始化
 
-The `CuArray` type aims to implement the `AbstractArray` interface, and provide
-implementations of methods that are commonly used when working with arrays. That means you
-can construct `CuArray`s in the same way as regular `Array` objects:
+`CuArray` 类型可以提供`抽象数组`接口和通常用于普通数组的方法。这意味着你可以像构建`普通数组`一样构建 `CuArray`。
 
 ```julia
 julia> CuArray{Int}(undef, 2)
@@ -49,8 +37,7 @@ julia> similar(ans)
  0  0
 ```
 
-Copying memory to or from the GPU can be expressed using constructors as well, or by calling
-`copyto!`:
+从GPU中提取或写入内存可以构建函数，也可以调用 `copyto!` 函数：
 
 ```jldoctest
 julia> a = CuArray([1,2])
@@ -70,12 +57,10 @@ julia> copyto!(b, a)
 ```
 
 
-## Higher-order abstractions
+## 更高层的抽象
 
-The real power of programming GPUs with arrays comes from Julia's higher-order array
-abstractions: Operations that take user code as an argument, and specialize execution on it.
-With these functions, you can often avoid having to write custom kernels. For example, to
-perform simple element-wise operations you can use `map` or `broadcast`:
+GPU 数组编程的真正力量在于 Julia 的高阶数组抽象：一种把用户的代码当作实参（argument），然后进行特殊化处理的操作。有了这些函数，你通常不用自己定制 GPU 核函数。
+例如，你可以使用 `map` 或 `broadcast` 函数执行元素积（element-wise）的操作：
 
 ```jldoctest
 julia> a = CuArray{Float32}(undef, (1,2));
@@ -89,8 +74,7 @@ julia> map(sin, a)
  -0.958924  -0.958924
 ```
 
-To reduce the dimensionality of arrays, CUDA.jl implements the various flavours of
-`(map)reduce(dim)`:
+为了减少数组的维度，CUDA.jl 执行了不同种的 `(map)reduce(dim)`：
 
 ```jldoctest
 julia> a = CUDA.ones(2,3)
@@ -115,7 +99,7 @@ julia> Base.mapreducedim!(identity, +, b, a)
  6.0
 ```
 
-To retain intermediate values, you can use `accumulate`:
+可以使用 `accumulate` 以保留中间值：
 
 ```jldoctest
 julia> a = CUDA.ones(2,3)
@@ -130,9 +114,9 @@ julia> accumulate(+, a; dims=2)
 ```
 
 
-## Logical operations
+## 逻辑运算
 
-`CuArray`s can also be indexed with arrays of boolean values to select items:
+`CuArray` 也可以用布尔数组作为索引来选择项目：
 
 ```jldoctest
 julia> a = CuArray([1,2,3])
@@ -146,7 +130,7 @@ julia> a[[false,true,false]]
  2
 ```
 
-Built on top of this, are several functions with higher-level semantics:
+建立在这之上的是一些语义学中更高层次的函数：
 
 ```jldoctest
 julia> a = CuArray([11,12,13])
@@ -176,9 +160,9 @@ julia> findmax(b; dims=2)
 ```
 
 
-## Array wrappers
+## 数组封装器
 
-To some extent, CUDA.jl also supports well-known array wrappers from the standard library:
+在一定程度上，CUDA.jl 也支持标准程序库中广为人知的数组封装器们：
 
 ```jldoctest
 julia> a = CuArray(collect(1:10))
@@ -216,24 +200,16 @@ julia> c = view(a, 2:5)
  5
 ```
 
-The above contiguous `view` and `reshape` have been specialized to return new objects of
-type `CuArray`. Other wrappers, such as non-contiguous views or the LinearAlgebra wrappers
-that will be discussed below, are implemented using their own type (e.g. `SubArray` or
-`Transpose`). This can cause problems, as calling methods with these wrapped objects will
-not dispatch to specialized `CuArray` methods anymore. That may result in a call to fallback
-functionality that performs scalar iteration.
+上述相连的 `view` 和 `reshape` 已经被特殊化用以返回 `CuArray` 格式的新对象。其他的封装器，比如下面将要讨论的非相邻视图或 LinearAlgebra 封装器，都是使用他们自己的类型来实现的（比如 `SubArray` 或 `Transpose`）。
+这可能会带来问题，因为调用这些带着封装好对象的方法将不会再分派到专门的 `CuArray`。那将导致执行常量循环的应急函数的调用
 
-Certain common operations, like broadcast or matrix multiplication, do know how to deal with
-array wrappers by using the [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) package. This
-is still not a complete solution though, e.g. new array wrappers are not covered, and only
-one level of wrapping is supported. Sometimes the only solution is to materialize the
-wrapper to a `CuArray` again.
+这些常见的运算，例如广播或矩阵乘法，明白如何解决数组包装器，通过使用 [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) 包。然而还没有完全的解决方案, 存在如有些新数组的包装器还没有覆盖，而且只支持一级包装的问题。
+有时，唯一的解决办法是将包装器再次具体化为 `CuArray`。
 
 
-## Random numbers
+## 随机数
 
-Base's convenience functions for generating random numbers are available in the CUDA module
-as well:
+Base 中用于生成随机数的方便函数在 CUDA 模块中也可以使用。
 
 ```jldoctest
 julia> CUDA.rand(2)
@@ -247,10 +223,7 @@ julia> CUDA.randn(Float64, 2, 1)
   1.618410515635752
 ```
 
-Behind the scenes, these random numbers come from two different generators: one backed by
-[CURAND](https://docs.nvidia.com/cuda/curand/index.html), another by kernels defined in
-GPUArrays.jl. Operations on these generators are implemented using methods from the Random
-standard library:
+在幕后，这些随机数来自两个不同的生成器：一个来自 [CURAND](https://docs.nvidia.com/cuda/curand/index.html)，另一个来自 GPUArrays.jl 中定义的内核。对这些生成器的运算是用 Random 标准库的方法实现的。
 
 ```jldoctest
 julia> using Random
@@ -266,7 +239,7 @@ julia> a = Random.rand!(GPUArrays.global_rng(a), a)
  0.13394515
 ```
 
-CURAND also supports generating lognormal and Poisson-distributed numbers:
+CURAND 还支持生成对数正态和泊松分布的数字。
 
 ```jldoctest
 julia> CUDA.rand_logn(Float32, 1, 5; mean=2, stddev=20)
@@ -278,16 +251,15 @@ julia> CUDA.rand_poisson(UInt32, 1, 10; lambda=100)
  0x00000058  0x00000066  0x00000061  …  0x0000006b  0x0000005f  0x00000069
 ```
 
-Note that these custom operations are only supported on a subset of types.
+请注意，只有一部分类型支持这些自定义操作。
 
 
-## Linear algebra
+## 线性代数
 
-CUDA's linear algebra functionality from the [CUBLAS](https://developer.nvidia.com/cublas)
-library is exposed by implementing methods in the LinearAlgebra standard library:
+CUDA 来自 [CUBLAS](https://developer.nvidia.com/cublas) 库的线性代数功能是通过实现线性代数标准库中的方法公开的。
 
 ```julia
-julia> # enable logging to demonstrate a CUBLAS kernel is used
+julia> # 启用日志记录以证明使用了 CUBLAS 内核。
        CUBLAS.cublasLoggerConfigure(1, 0, 1, C_NULL)
 
 julia> CUDA.rand(2,2) * CUDA.rand(2,2)
@@ -301,7 +273,7 @@ Certain operations, like the above matrix-matrix multiplication, also have a nat
 written in Julia for the purpose of working with types that are not supported by CUBLAS:
 
 ```julia
-julia> # enable logging to demonstrate no CUBLAS kernel is used
+julia> # 启用日志记录以证明没有使用 CUBLAS 内核。
        CUBLAS.cublasLoggerConfigure(1, 0, 1, C_NULL)
 
 julia> CUDA.rand(Int128, 2, 2) * CUDA.rand(Int128, 2, 2)
@@ -310,10 +282,7 @@ julia> CUDA.rand(Int128, 2, 2) * CUDA.rand(Int128, 2, 2)
  -154405209690443624360811355271386638733  -77891631198498491666867579047988353207
 ```
 
-Operations that exist in CUBLAS, but are not (yet) covered by high-level constructs in the
-LinearAlgebra standard library, can be accessed directly from the CUBLAS submodule. Note
-that you do not need to call the C wrappers directly (e.g. `cublasDdot`), as many operations
-have more high-level wrappers available as well (e.g. `dot`):
+存在于 CUBLAS 中，但（还）未被 LinearAlgebra 标准库中的高级构造所覆盖的操作，可以直接从 CUBLAS 子模块中访问。需要注意的是，你不需要直接调用C语言的封装器（比如`cublasDdot`），因为很多操作也有更高级的封装器可用（比如`dot`）。
 
 ```jldoctest
 julia> x = CUDA.rand(2)
@@ -336,11 +305,9 @@ julia> dot(Array(x), Array(y))
 ```
 
 
-## Solver
+## 求解器
 
-LAPACK-like functionality as found in the
-[CUSOLVER](https://docs.nvidia.com/cuda/cusolver/index.html) library can be accessed through
-methods in the LinearAlgebra standard library too:
+类似于 [CUSOLVER](https://docs.nvidia.com/cuda/cusolver/index.html) 库中的 LAPACK 功能也可以通过 线性代数标准库中的方法访问：
 
 ```jldoctest
 julia> using LinearAlgebra
@@ -363,7 +330,7 @@ U factor:
   ⋅        0.919137
 ```
 
-Other operations are bound to the left-division operator:
+其他的操作都是绑定在左分运算符上的：
 
 ```jldoctest
 julia> a = CUDA.rand(2,2)
@@ -389,11 +356,9 @@ julia> Array(a) \ Array(b)
 
 
 
-## Sparse arrays
+## 稀疏数组
 
-Sparse array functionality from the
-[CUSPARSE](https://docs.nvidia.com/cuda/cusparse/index.html) library is mainly available
-through functionality from the SparseArrays package applied to `CuSparseArray` objects:
+[CUSPARSE](https://docs.nvidia.com/cuda/cusparse/index.html) 库的稀疏数组功能主要是通过应用于 `CuSparseArray` 对象的 SparseArrays 包的功能来实现的：
 
 ```jldoctest
 julia> using SparseArrays
@@ -425,16 +390,13 @@ julia> nnz(d_x)
 4
 ```
 
-For 2-D arrays the `CuSparseMatrixCSC` and `CuSparseMatrixCSR` can be used.
+对于二维数组，可以使用 `CuSparseMatrixCSC` 和 `CuSparseMatrixCSR`。
 
-Non-integrated functionality can be access directly in the CUSPARSE submodule again.
+非集成的功能可以在 CUSPARSE 子模块中再次直接访问。
 
 
 ## FFTs
-
-Functionality from [CUFFT](https://docs.nvidia.com/cuda/cufft/index.html) is integrated with
-the interfaces from the [AbstractFFTs.jl](https://github.com/JuliaMath/AbstractFFTs.jl)
-package:
+[CUFFT](https://docs.nvidia.com/cuda/cufft/index.html) 的功能是与 [AbstractFFTs.jl](https://github.com/JuliaMath/AbstractFFTs.jl) 包的接口集成在一起的：
 
 ```jldoctest
 julia> a = CUDA.rand(2,2)
