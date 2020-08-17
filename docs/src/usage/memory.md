@@ -1,35 +1,27 @@
-# Memory management
+# 内存管理
 
-A crucial aspect of working with a GPU is managing the data on it. The `CuArray` type is the
-primary interface for doing so: Creating a `CuArray` will allocate data on the GPU, copying
-elements to it will upload, and converting back to an `Array` will download values to the
-CPU:
+使用GPU时很重要的一点是管理它的内存。`CuArray` 类型内存管理的主要接口。创建 `CuArray` 时会在 GPU 上分配数据，复制元素到 CuArray 时会上传值到 GPU，将其转换回 `Array` 时会下载值到 CPU：
 
 ```julia
-# generate some data on the CPU
+# 在 CPU 上生成一些数据
 cpu = rand(Float32, 1024)
 
-# allocate on the GPU
+# 在 GPU 上分配
 gpu = CuArray{Float32}(undef, 1024)
 
-# copy from the CPU to the GPU
+# 从 CPU 复制到 GPU
 copyto!(gpu, cpu)
 
-# download and verify
+# 下载并验证
 @test cpu == Array(gpu)
 ```
 
-A shorter way to accomplish these operations is to call the copy constructor, i.e.
-`CuArray(cpu)`.
+完成这些操作的一个较为简单的方法是调用复制构造函数，即 `CuArray(cpu)`。
 
 
-## Type-preserving upload
+## 保存类型的上传
 
-In many cases, you might not want to convert your input data to a dense `CuArray`. For
-example, with array wrappers you will want to preserve that wrapper type on the GPU and only
-upload the contained data. The [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) package does
-exactly that, and contains a list of rules on how to unpack and reconstruct types like array
-wrappers so that we can preserve the type when, e.g., uploading data to the GPU:
+In many cases, you might not want to convert your input data to a dense `CuArray`。例如，对于数组包装器，你会希望在 GPU 上保留该包装器类型，只上传其中的数据。[Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) 包正是这样做的，它包含了一个关于如何解包和重构类型（如数组封装）的规则列表，以便我们在诸如将数据上传到 GPU 时可以保留类型：
 
 ```julia-repl
 julia> cpu = Diagonal([1,2])     # wrapped data on the CPU
@@ -45,7 +37,7 @@ julia> gpu = adapt(CuArray, cpu) # upload to the GPU, keeping the wrapper intact
  ⋅  2
 ```
 
-Since this is a very common operation, the `cu` function conveniently does this for you:
+因为这是一个很常见的操作，`cu` 函数可以很方便地帮你完成它：
 
 ```julia-repl
 julia> cu(cpu)
@@ -54,26 +46,20 @@ julia> cu(cpu)
   ⋅   2.0
 ```
 
-!!! warning
+!!! 警告
 
-    The `cu` function is opinionated and converts input scalars to `Float32`. This is
-    often a good call, as `Float64` and many other scalar types perform badly on the GPU.
-    If this is unwanted, use `adapt` directly.
+    `cu` 函数是很固执的，坚持将输入标量转换为 `Float32` 类型。
+    这通常是一个很好的决定，因为 `Float64` 和许多其他标量类型在 GPU 上的表现很糟糕。
+    如果不需要转换，则直接使用 `adapt`。
 
 
-## Garbage collection
+## 垃圾收集
 
-Instances of the `CuArray` type are managed by the Julia garbage collector. This means that
-they will be collected once they are unreachable, and the memory hold by it will be
-repurposed or freed. There is no need for manual memory management, just make sure your
-objects are not reachable (i.e., there are no instances or references).
+`CuArray` 类型的实例由 Julia 垃圾收集器管理。这意味着，一旦它们无法被执行，就会被收集起来，释放或重新利用它们占用的内存。不需要手动管理内存，只要确保你的对象是不被执行的（即没有实例或引用）。
 
-### Memory pool
+### 内存池
 
-Behind the scenes, a memory pool will hold on to your objects and cache the underlying
-memory to speed up future allocations. As a result, your GPU might seem to be running out of
-memory while it isn't. When memory pressure is high, the pool will automatically free cached
-objects:
+在幕后，内存池将保持你的对象并缓存底层内存，以加快今后的分配。因此，你的GPU可能看上去出现了内存耗尽的情况，但实际上并没有。当内存压力较大时，内存池会自动释放缓存对象：
 
 ```julia-repl
 julia> CUDA.memory_status()             # initial state
@@ -96,7 +82,7 @@ CUDA GPU memory usage: 8.000 KiB
 BinnedPool usage: 8.000 KiB (0 bytes allocated, 8.000 KiB cached)
 ```
 
-If for some reason you need all cached memory to be reclaimed, call `CUDA.reclaim()`:
+如果你出于某种原因需要回收所有缓存内存，请调用 `CUDA.reclaim()`：
 
 ```julia-repl
 julia> CUDA.reclaim()
@@ -108,24 +94,17 @@ CUDA GPU memory usage: 0 bytes
 BinnedPool usage: 0 bytes (0 bytes allocated, 0 bytes cached)
 ```
 
-!!! note
+!!! 注
 
-    It is should never be required to manually reclaim memory before performing any
-    high-level GPU array operation: Functionality that allocates should itself call into the
-    memory pool and free any cached memory if necessary. It is a bug if that operation
-    runs into an out-of-memory situation only if not manually reclaiming memory beforehand.
+    在执行任何高级 GPU 阵列操作之前，绝不应该请求手动回收内存。分配的功能本身应该被调用到内存池，并在必要时释放任何缓存内存。如果只因没有事先手动回收内存而遇到内存不足的情况，说明出了 bug。
 
-### Avoiding GC pressure
+### 避免GC压力
 
-When your application performs a lot of memory operations, the time spent during GC might
-increase significantly. This happens more often than it does on the CPU because GPUs tend to
-have smaller memories and more frequently run out of it. When that happens, CUDA invokes
-the Julia garbage collector, which then needs to scan objects to see if they can be freed to
-get back some GPU memory.
+当你的应用程序执行大量的内存操作时，GC 过程中花费的时间可能会显著增加。这种情况比在 CPU 上发生的更多，因为 GPU 的内存往往更小，更经常用完。
+当这种情况发生时，CUDA 会调用 Julia 垃圾收集器。垃圾收集器会扫描对象，看看是否可以释放它们以拿回一些 GPU 内存。
 
-To avoid having to depend on the Julia GC to free up memory, you can directly inform
-CUDA.jl when an allocation can be freed (or reused) by calling the `unsafe_free!`
-method. Once you've done so, you cannot use that array anymore:
+为了避免依赖 Julia GC 来释放内存，你可以通过调用 `unsafe_free!` 方法直接通知 CUDA.jl 何时可以释放（或重用）一个配置。
+一旦你这样做了，你就不能再使用这个数组了。
 
 ```julia-repl
 julia> a = CuArray([1])
@@ -140,13 +119,9 @@ Error showing value of type CuArray{Int64,1,Nothing}:
 ERROR: AssertionError: Use of freed memory
 ```
 
-### Detecting leaks
+### 检测泄漏
 
-If you think you have a memory leak, or you want to know where your GPU's RAM has gone, you
-can ask the memory pool to display all outstanding allocations. Since it is expensive to
-keep track of that, this feature is only available when running Julia on debug level 2 or
-higher (i.e., with the `-g2` argument). When you do so, the `memory_status()` function from
-above will display additional information:
+如果你认为你有一个内存泄漏，或者你想知道你的 GPU 的 RAM 去了哪里，你可以要求内存池显示所有未分配的内存。 由于跟踪这种情况的成本很高，所以这个功能只有在调试级别 2 或更高的情况下运行 Julia 时才能使用（即使用 `-g2` 参数）当你这样做时，上面的 `memory_status()` 函数将显示额外的信息：
 
 ```julia-repl
 julia> CuArray([1])
@@ -170,27 +145,23 @@ Stacktrace:
  [8] (::REPL.var"#26#27"{REPL.REPLBackend})() at ./task.jl:358
 ```
 
-### Environment variables
+### 环境变量
 
-Several environment variables affect the behavior of the memory allocator:
+一些环境变量会影响内存分配器的行为：
 
-- `JULIA_CUDA_MEMORY_POOL`: select a different memory pool. Several implementations are
-  available:
-  - `binned` (the default): cache memory in pow2-sized bins
-  - `split`: caching pool that supports splitting allocations, designed to reduce pressure
-    on the Julia garbage collector
-  - `simple`: very simple caching layer for demonstration purposes
-  - `none`: no pool at all, directly deferring to the CUDA allocator
-- `JULIA_CUDA_MEMORY_LIMIT`: cap the amount of allocated GPU memory, in bytes.
+- `JULIA_CUDA_MEMORY_POOL`：选择不同的内存池。有几种实现方式可供选择：
+  - `binned`（默认）：以 pow2 大小的仓为单位缓存内存。
+  - `split`：支持拆分分配的缓存池，旨在减少 Julia 垃圾收集器的压力。
+  - `simple`：用于示范的非常简单的缓存层。
+  - `none`：完全没有内存池，直接交由 CUDA 分配器处理。
+- `JULIA_CUDA_MEMORY_LIMIT`：分配给 GPU 内存的上限，单位为字节。
 
-These environment variables should be set before importing packages; changing them at run
-time does not have any effect.
+这些环境变量应该在导入软件包之前设置，在运行时改变它们不会有任何影响。
 
 
-## Batching iterator
+## 批量迭代器
 
-If you are dealing with data sets that are too large to fit on the GPU all at once, you can
-use `CuIterator` to batch operations:
+如果您要处理的数据集太大，无法一次装入 GPU，您可以使用 `CuIterator` 来进行批量操作：
 
 ```julia
 julia> batches = [([1], [2]), ([3], [4])]
@@ -202,6 +173,4 @@ Batch 1: [3]
 Batch 2: [7]
 ```
 
-For each batch, every argument (assumed to be an array-like) is uploaded to the GPU using
-the `adapt` mechanism from above. Afterwards, the memory is eagerly put back in the CUDA
-memory pool using `unsafe_free!` to lower GC pressure.
+对于每一个批次，每一个参数（假如是一个数组形式的参数）都会使用上面的`适配`机制上传到 GPU。之后，通过 `unsafe_free!`，内存被急切地放回 CUDA 内存池中以降低GC压力。
