@@ -13,7 +13,7 @@ using Distributed, CUDA
 addprocs(length(devices()))
 @everywhere using CUDA
 
-# assign devices
+# 分配设备
 asyncmap((zip(workers(), devices()))) do (p, d)
     remotecall_wait(p) do
         @info "Worker $p uses $d"
